@@ -1,122 +1,104 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include <IRremote.h>
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+#include <ir_LG.h> // Inclui os controles específicos para LG
 
 // Substitua pelos seus dados de Wi-Fi
-const char* ssid = "F_Router";    
-const char* password = "1292324100";    
+const char* ssid = "";    
+const char* password = "";    
 const int irPin = 4; // Defina o pino GPIO4 para o emissor IR
 
-// Instancias  de classes
+// Instancias de classes
 WiFiClient espClient;
 PubSubClient client(espClient);
-IRsend irsend(irPin); // Instância do emissor IR
+
+// Instância do ar-condicionado LG
+IRLgAc ac(irPin); 
 
 // Dados do servidor MQTT
-const char* mqtt_server = "192.168.0.250";  // Usando o servidor MQTT público (troque por seu servidor, se necessário)
-//const char* mqtt_server = "broker.hivemq.com";  // Usando o servidor MQTT público (troque por seu servidor, se necessário)
-
-const int mqtt_port = 1883;  // Porta padrão MQTT
+const char* mqtt_server = "192.168.0.250"; 
+const int mqtt_port = 1883;
 const char* topic_publish = "fe6464c65c674037a8fea7aa34150954/app";
 const char* topic_subscriber = "fe6464c65c674037a8fea7aa341509541/hard_1";
 
-//CONSTANTES codigos Hexadecimais
-const uint32_t liga_ar = 0x880095E;
-const uint32_t desliga_ar = 0x88C0051;
-const uint32_t temp_18 = 0x8808350;
-const uint32_t temp_19 = 0x8808451;
-const uint32_t temp_20 = 0x8808552;
-const uint32_t temp_21 = 0x8808653;
-const uint32_t temp_22 = 0x8808754;
-const uint32_t temp_23 = 0x8808855;
-const uint32_t temp_24 = 0x8808956;
-const uint32_t temp_25 = 0x88C0051;
-const uint32_t temp_26 = 0x88C0051;
-const uint32_t temp_27 = 0x88C0051;
-const uint32_t desliga_led = 0x88C0051;
-const uint32_t velocidade_1 = 0x88C0051;
-const uint32_t velocidade_2 = 0x88C0051;
-const uint32_t velocidade_3 = 0x88C0051;
-const uint32_t velocidade_auto = 0x88C0051;
-const uint32_t modo_ventilador = 0x88C0051;
-const uint32_t modo_ar = 0x88C0051;
+const int LED_PIN = LED_BUILTIN; 
 
-// Funções para cada comando
+// Pisca o LED por 100ms 
+void piscarLed() {
+   digitalWrite(LED_PIN, LOW); // Acende 
+   delay(100); 
+   digitalWrite(LED_PIN, HIGH); // Apaga 
+}
+
+// ==========================================
+// FUNÇÕES DE COMANDO COM IRremoteESP8266
+// ==========================================
+
 void handleValidaPlacaOnline() {
   client.publish(topic_publish, "Placa Conectada !");
 }
-void dispatchHandleCommand(uint32_t ir_command, String mensagem ){
-  irsend.sendLG(ir_command, 28);
+
+// Função centralizada para enviar o estado do Ar e publicar no MQTT
+void enviaEstadoAc(String mensagem) {
+  ac.send(); // Constrói o código com as definições atuais e envia
   client.publish(topic_publish, mensagem.c_str());
 }
 
 void handleLigaAr() {
-  // irsend.sendLG(liga_ar, 28);
-  // client.publish(topic_publish, "Ar ligado !");
-  dispatchHandleCommand(liga_ar, "Ar ligado !");
+  ac.on();
+  enviaEstadoAc("Ar ligado!");
 }
-
 void handleDesligaAr() {
-  // irsend.sendLG(desliga_ar, 28);
-  // client.publish(topic_publish, );
-  dispatchHandleCommand(desliga_ar, "Ar desligado !");
+  ac.off();
+  enviaEstadoAc("Ar desligado!");
 }
+void handleTemp18() { ac.setTemp(18); enviaEstadoAc("Temperatura 18 graus!"); }
+void handleTemp19() { ac.setTemp(19); enviaEstadoAc("Temperatura 19 graus!"); }
+void handleTemp20() { ac.setTemp(20); enviaEstadoAc("Temperatura 20 graus!"); }
+void handleTemp21() { ac.setTemp(21); enviaEstadoAc("Temperatura 21 graus!"); }
+void handleTemp22() { ac.setTemp(22); enviaEstadoAc("Temperatura 22 graus!"); }
+void handleTemp23() { ac.setTemp(23); enviaEstadoAc("Temperatura 23 graus!"); }
+void handleTemp24() { ac.setTemp(24); enviaEstadoAc("Temperatura 24 graus!"); }
+void handleTemp25() { ac.setTemp(25); enviaEstadoAc("Temperatura 25 graus!"); }
+void handleTemp26() { ac.setTemp(26); enviaEstadoAc("Temperatura 26 graus!"); }
+void handleTemp27() { ac.setTemp(27); enviaEstadoAc("Temperatura 27 graus!"); }
 
-void handleTemp18() {
-    dispatchHandleCommand(temp_18, "temperatura 18 graus !");
-}
-void handleTemp19() {
-    dispatchHandleCommand(temp_19, "temperatura 19 graus !");
-}
-void handleTemp20() {
-    dispatchHandleCommand(temp_20, "temperatura 20 graus !");
-}
-void handleTemp21() {
-    dispatchHandleCommand(temp_21, "temperatura 21 graus !");
-}
-void handleTemp22() {
-    dispatchHandleCommand(temp_22, "temperatura 22 graus !");
-}
-void handleTemp23() {
-    dispatchHandleCommand(temp_23, "temperatura 23 graus !");
-}
-void handleTemp24() {
-    dispatchHandleCommand(temp_24, "temperatura 24 graus !");
-}
-void handleTemp25() {
-    dispatchHandleCommand(temp_25, "temperatura 25 graus !");
-}
-void handleTemp26() {
-    dispatchHandleCommand(temp_26, "temperatura 26 graus !");
-}
-void handleTemp27() {
-    dispatchHandleCommand(temp_27, "temperatura 27 graus !");
-}
 void handleDesligaLed() {
-    dispatchHandleCommand(desliga_led, "temperatura 27 graus !");
+  ac.setLight(false); // Apaga o display do ar condicionado
+  enviaEstadoAc("LED do ar desligado!");
 }
 void handleVelocidade1() {
-    dispatchHandleCommand(velocidade_1, "Velocidade 1 !");
+  ac.setFan(kLgAcFanLow);
+  enviaEstadoAc("Velocidade Baixa!");
 }
 void handleVelocidade2() {
-    dispatchHandleCommand(velocidade_2, "Velocidade 2 !");
+  ac.setFan(kLgAcFanMedium); // CORRIGIDO: kLgAcFanMedium (escrito por extenso)
+  enviaEstadoAc("Velocidade Media!");
 }
 void handleVelocidade3() {
-    dispatchHandleCommand(velocidade_3, "Velocidade 3 !");
+  ac.setFan(kLgAcFanHigh);
+  enviaEstadoAc("Velocidade Alta!");
 }
 void handleVelocidadeAuto() {
-    dispatchHandleCommand(velocidade_auto, "Velocidade Automatica !");
+  ac.setFan(kLgAcFanAuto);
+  enviaEstadoAc("Velocidade Automatica!");
 }
 void handleModoVentilador() {
-    dispatchHandleCommand(modo_ventilador, "Modo Ventilador!");
+  ac.setMode(kLgAcFan);
+  enviaEstadoAc("Modo apenas Ventilador!");
 }
 void handleModoAr() {
-    dispatchHandleCommand(modo_ar, "Modo ar condicionado !");
+  ac.setMode(kLgAcCool);
+  enviaEstadoAc("Modo Ar Condicionado (Frio)!");
 }
+
+// ==========================================
+
 // Tabela de comandos
 struct Command {
-  const char* name;       // Nome do comando
-  void (*action)();       // Ponteiro para a função que executa o comando
+  const char* name;
+  void (*action)();
 };
 
 Command commands[] = {
@@ -143,137 +125,81 @@ Command commands[] = {
   {nullptr, nullptr} // Finalizador
 };
 
-
-
-// Função de callback para quando uma mensagem MQTT for recebida
-// void callback(char* topic, byte* payload, unsigned int length) {
-
-//   String mensagem = "";
-//   for (unsigned int i = 0; i < length; i++) {
-//     mensagem += (char)payload[i];
-//   }
-
-//   if (mensagem.indexOf("ValidaPlacaOnline") >= 0) {
-//     client.publish(topic_publish, "Placa Conectada !" );
-//   }
-
-//   if (mensagem == "ar-on") {
-   
-//     irsend.sendLG(liga_ar, 28);
-//     client.publish(topic_publish, "Ar ligado !" );
-    
-//   } else if (mensagem == "ar-off") {
-   
-//     irsend.sendLG(desliga_ar, 28);
-//     client.publish(topic_publish, "Ar desligado !" );
-//   }
-
-// }
-// void callback(char* topic, byte* payload, unsigned int length) {
-//   // Criar um buffer de char para armazenar a mensagem
-//   char mensagem[length + 1]; // +1 para o caractere nulo
-//   for (unsigned int i = 0; i < length; i++) {
-//     mensagem[i] = (char)payload[i];
-//   }
-//   mensagem[length] = '\0'; // Adiciona o caractere nulo ao final
-
-//   // Verifica se a mensagem contém "ValidaPlacaOnline"
-//   if (strstr(mensagem, "ValidaPlacaOnline") == 0) {
-//     client.publish(topic_publish, "Placa Conectada !");
-//   } else if (strcmp(mensagem, "ar-on") == 0) {
-//     irsend.sendLG(liga_ar, 28);
-//     client.publish(topic_publish, "Ar ligado !");
-//   } else if (strcmp(mensagem, "ar-off") == 0) {
-//     irsend.sendLG(desliga_ar, 28);
-//     client.publish(topic_publish, "Ar desligado !");
-//   }
-// }
 void callback(char* topic, byte* payload, unsigned int length) {
+  piscarLed();
 
-  // Criar um buffer de char para armazenar a mensagem
   char mensagem[length + 1];
   for (unsigned int i = 0; i < length; i++) {
     mensagem[i] = (char)payload[i];
   }
-  mensagem[length] = '\0'; // Adiciona o caractere nulo ao final
+  mensagem[length] = '\0';
 
   Serial.println(" Mensagem Recebida: ");
- Serial.println(mensagem);
-  // Procurar comando correspondente
+  Serial.println(mensagem);
+
   for (int i = 0; commands[i].name != nullptr; i++) {
     if (strcmp(mensagem, commands[i].name) == 0) {
-      commands[i].action(); // Executa a função associada
+      commands[i].action(); 
       return;
     }
   }
 
-  // Comando não encontrado
   client.publish(topic_publish, "Comando não reconhecido.");
 }
 
-// Conectar ao Wi-Fi
 void setup_wifi() {
   Serial.begin(115200);
   delay(10);
-
-  Serial.println();
-  Serial.print("Conectando ao Wi-Fi");
+  Serial.println("\nConectando ao Wi-Fi");
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.print(".");
   }
-
-  Serial.println();
-  Serial.println("Conectado ao Wi-Fi");
-  Serial.print("Endereço IP: ");
+  Serial.println("\nConectado ao Wi-Fi. IP: ");
   Serial.println(WiFi.localIP());
 }
 
-// Conectar ao servidor MQTT
 void reconnect() {
-  // Loop até conseguir a conexão
   while (!client.connected()) {
     Serial.print("Tentando conectar ao MQTT...");
-    
-    // Tente se conectar com um clientID único
-    if (client.connect("ESp82661")) {
-      Serial.println("Conectado ao servidor MQTT");
-
-      // Inscrever-se em um tópico
+    if (client.connect("ESp82661_ArLG")) {
+      Serial.println("Conectado!");
       client.subscribe(topic_subscriber);
       client.publish(topic_publish, "PLACA CONECTADA" );
     } else {
-      Serial.print("Falha na conexão ao MQTT, rc=");
+      Serial.print("Falhou, rc=");
       Serial.print(client.state());
-      Serial.println(" tentarei novamente em 5 segundos");
+      Serial.println(" tentando novamente em 5s");
       delay(5000);
     }
   }
 }
 
 void setup() {
-  // Configura o Wi-Fi
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH); // Apagado por padrão
+
   setup_wifi();
   
-  // Configura o servidor MQTT
-  IrSender.begin(irPin); // Inicializa o emissor IR no pino 4
+  // Inicia e configura valores iniciais pro "Ar Virtual" do ESP8266
+  ac.begin();
+  ac.off();                   // Começa desligado
+  ac.setFan(kLgAcFanAuto);    // Ventilação em Auto
+  ac.setMode(kLgAcCool);      // Modo Frio
+  ac.setTemp(22);             // Temperatura padrão 22
+  ac.setLight(true);          // Display LED ligado por padrão
+
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
 }
 
 void loop() {
-  // Se o cliente não estiver conectado ao servidor MQTT, tenta reconectar
   if (!client.connected()) {
     reconnect();
   }
-
-  // Manter a conexão com o servidor MQTT
   client.loop();
 
-  // // Aguardar um pouco antes de enviar novamente
-  delay(3000);
+  delay(50); 
 }
-
-
