@@ -1,11 +1,10 @@
-
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <IRremote.h>
 
 // Substitua pelos seus dados de Wi-Fi
 const char* ssid = "F_Router";    
-const char* password = "1292324100";
+const char* password = "1292324100";    
 const int irPin = 4; // Defina o pino GPIO4 para o emissor IR
 
 // Instancias  de classes
@@ -14,10 +13,12 @@ PubSubClient client(espClient);
 IRsend irsend(irPin); // Instância do emissor IR
 
 // Dados do servidor MQTT
-const char* mqtt_server = "broker.hivemq.com";  // Usando o servidor MQTT público (troque por seu servidor, se necessário)
+const char* mqtt_server = "192.168.0.250";  // Usando o servidor MQTT público (troque por seu servidor, se necessário)
+//const char* mqtt_server = "broker.hivemq.com";  // Usando o servidor MQTT público (troque por seu servidor, se necessário)
+
 const int mqtt_port = 1883;  // Porta padrão MQTT
 const char* topic_publish = "fe6464c65c674037a8fea7aa34150954/app";
-const char* topic_subscriber = "fe6464c65c674037a8fea7aa34150954/hard";
+const char* topic_subscriber = "fe6464c65c674037a8fea7aa341509541/hard_1";
 
 //CONSTANTES codigos Hexadecimais
 const uint32_t liga_ar = 0x880095E;
@@ -107,10 +108,10 @@ void handleVelocidadeAuto() {
     dispatchHandleCommand(velocidade_auto, "Velocidade Automatica !");
 }
 void handleModoVentilador() {
-    dispatchHandleCommand(modo_ventilador, "Modo ar condicionado !");
+    dispatchHandleCommand(modo_ventilador, "Modo Ventilador!");
 }
 void handleModoAr() {
-    dispatchHandleCommand(modo_ar, "Modo Ventilador!");
+    dispatchHandleCommand(modo_ar, "Modo ar condicionado !");
 }
 // Tabela de comandos
 struct Command {
@@ -188,6 +189,7 @@ Command commands[] = {
 //   }
 // }
 void callback(char* topic, byte* payload, unsigned int length) {
+
   // Criar um buffer de char para armazenar a mensagem
   char mensagem[length + 1];
   for (unsigned int i = 0; i < length; i++) {
@@ -195,6 +197,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   mensagem[length] = '\0'; // Adiciona o caractere nulo ao final
 
+  Serial.println(" Mensagem Recebida: ");
+ Serial.println(mensagem);
   // Procurar comando correspondente
   for (int i = 0; commands[i].name != nullptr; i++) {
     if (strcmp(mensagem, commands[i].name) == 0) {
@@ -227,52 +231,27 @@ void setup_wifi() {
   Serial.println(WiFi.localIP());
 }
 
+// Conectar ao servidor MQTT
 void reconnect() {
-
+  // Loop até conseguir a conexão
   while (!client.connected()) {
+    Serial.print("Tentando conectar ao MQTT...");
+    
+    // Tente se conectar com um clientID único
+    if (client.connect("ESp82661")) {
+      Serial.println("Conectado ao servidor MQTT");
 
-    Serial.println();
-    Serial.println("================================");
-    Serial.println("       CONEXAO MQTT");
-    Serial.println("================================");
-
-    Serial.print("Broker: ");
-    Serial.print(mqtt_server);
-    Serial.print(":");
-    Serial.println(mqtt_port);
-
-    String clientId = "ESP8266-";
-    clientId += String(ESP.getChipId(), HEX);
-
-    Serial.print("Client ID: ");
-    Serial.println(clientId);
-
-    if (client.connect(clientId.c_str())) {
-
-      Serial.println("MQTT CONECTADO!");
-
-      if (client.subscribe(topic_subscriber)) {
-        Serial.println("Subscribe realizado!");
-      } else {
-        Serial.println("Erro no subscribe!");
-      }
-
-      if (client.publish(topic_publish, "PLACA CONECTADA")) {
-        Serial.println("Mensagem publicada!");
-      } else {
-        Serial.println("Erro ao publicar!");
-      }
-
+      // Inscrever-se em um tópico
+      client.subscribe(topic_subscriber);
+      client.publish(topic_publish, "PLACA CONECTADA" );
     } else {
-
-      Serial.print("Falha MQTT, rc=");
-      Serial.println(client.state());
-
+      Serial.print("Falha na conexão ao MQTT, rc=");
+      Serial.print(client.state());
+      Serial.println(" tentarei novamente em 5 segundos");
       delay(5000);
     }
   }
 }
-
 
 void setup() {
   // Configura o Wi-Fi
